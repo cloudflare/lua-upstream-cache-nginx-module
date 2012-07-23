@@ -1,4 +1,51 @@
-This is a very simple module used as an example of
-extending the lua-nginx-module.  Recently added features
-allow other nginx modules to add Lua modules to the
-nginx environent.
+Name
+    http_cache - Expose & modify the internal nginx cache metadata.
+
+    *This module is not distributed with the Nginx source or in the lua-nginx
+    module* See the installation instructions.
+
+Status
+    This module is under active development and is nearly production ready.
+
+Version
+    This document describes http_cache v0.1.0
+
+Synopsis
+        # set search paths for pure Lua external libraries (';;' is the default path):
+        lua_package_path '/foo/bar/?.lua;/blah/?.lua;;';
+
+        # set search paths for Lua external libraries written in C (can also use ';;'):
+        lua_package_cpath '/bar/baz/?.so;/blah/blah/?.so;;';
+
+        server {
+            listen       32080 default_server;
+            server_name  localhost;
+
+            location / {
+               proxy_pass http://localhost:12345;
+               proxy_cache one;
+
+               header_filter_by_lua '
+               local http_cache = require("http_cache")
+               local cache_status = (ngx.var.upstream_cache_status or '')
+
+               local cache_data = http_cache.get_metadata()
+               local new_expire = ngx.now()
+               if cache_data and cache_data['valid_sec'] then
+                   http_cache.set_metadata({ valid_sec = new_expire,
+                                             fcn = { valid_sec = new_expire,
+                                                     expire = new_expire } })
+               end
+               ';
+            }
+        }
+
+Description
+    This module extends the lua-nginx Lua module. It adds the ability to read
+    and set values from nginx's internal cache metadata.
+
+API
+    get_metadata() - returns a table with all cache metadata.
+
+    set_metadat(tbl) - sets cache metadata from a table similar to the one 
+    returned by get_metadata
