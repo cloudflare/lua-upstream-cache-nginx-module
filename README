@@ -1,0 +1,4 @@
+This is a very simple module used as an example of
+extending the lua-nginx-module.  Recently added features
+allow other nginx modules to add Lua modules to the
+nginx environent.
