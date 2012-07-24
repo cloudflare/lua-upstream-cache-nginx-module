@@ -147,10 +147,6 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
     /* shared memory block */
     lua_createtable(L, 0, 2 /* nrec */); /* subtable */
 
-    lua_pushlstring(L, "entries", sizeof("entries")-1);
-    lua_pushnumber(L, cache->sh->entries);
-    lua_rawset(L, -3);
-
     lua_pushlstring(L, "size", sizeof("size")-1);
     lua_pushnumber(L, cache->sh->size);
     lua_rawset(L, -3);
