@@ -5,12 +5,13 @@
 
 #include "ngx_http_lua_cache_control.h"
 
-#define ASSIGN_NUMBER_OR_RET(field, target)                                    \
+#define ASSIGN_NUMBER_OR_RET(field, target, flag)                              \
     do {                                                                       \
         lua_getfield(L, n, field);                                             \
         switch(lua_type(L, -1)) {                                              \
             case LUA_TNUMBER:                                                  \
                 target = lua_tonumber(L, -1);                                  \
+                flag = 1;                                                      \
                 break;                                                         \
             case LUA_TNIL:                                                     \
                 break;                                                         \
@@ -19,20 +20,8 @@
         }                                                                      \
     } while(0)
 
-#define ASSIGN_NUMBER_OR_RET_UNLOCK(field, target)                             \
-    do {                                                                       \
-        lua_getfield(L, n, field);                                             \
-        switch(lua_type(L, -1)) {                                              \
-            case LUA_TNUMBER:                                                  \
-                target = lua_tonumber(L, -1);                                  \
-                break;                                                         \
-            case LUA_TNIL:                                                     \
-                break;                                                         \
-            default:                                                           \
-                ngx_shmtx_unlock(&cache->shpool->mutex);                       \
-                return luaL_error(L, "Bad args option value");                 \
-        }                                                                      \
-    } while(0)
+#define ASSIGN_IF_SET(field, value, flag)                                      \
+    if (flag) { field = value; }
 
 static int ngx_http_lua_ngx_get_cache_data(lua_State *L);
 static int ngx_http_lua_ngx_set_cache_data(lua_State *L);
@@ -65,8 +54,9 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
     int                          n;
     ngx_http_request_t          *r;
     ngx_http_cache_t            *c;
-    ngx_http_file_cache_t       *cache;
-    ngx_http_file_cache_node_t  *fcn;
+    ngx_http_file_cache_t       *cache, cache_tmp;
+    ngx_http_file_cache_sh_t    *sh, sh_tmp;
+    ngx_http_file_cache_node_t  *fcn, fcn_tmp;
     u_char                      *p;
 
 
@@ -92,8 +82,27 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
         /* empty response */
         return 1;
     }
-    fcn = c->node;
-    cache = c->file_cache;
+
+    /* make copies of all structs, to avoid locking for too long */
+    fcn = c->node ? c->node : NULL;
+    cache = c->file_cache ? c->file_cache : NULL;
+    sh = cache && cache->sh ? cache->sh : NULL;
+
+    ngx_shmtx_lock(&c->file_cache->shpool->mutex);
+
+    if (fcn) {
+        fcn_tmp = *c->node;
+    }
+
+    if (cache) {
+        cache_tmp = *c->file_cache;
+        if (sh) {
+            sh_tmp = *cache->sh;
+            cache_tmp.sh = &sh_tmp;
+        }
+    }
+
+    ngx_shmtx_unlock(&c->file_cache->shpool->mutex);
 
     p = ngx_pnalloc(r->pool, 2*NGX_HTTP_CACHE_KEY_LEN);
     if (!p) {
@@ -141,52 +150,51 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
     lua_pushnumber(L, c->valid_msec);
     lua_rawset(L, -3);
 
-    /* critical, locked section */
-    ngx_shmtx_lock(&cache->shpool->mutex);
-
     /* shared memory block */
-    lua_createtable(L, 0, 2 /* nrec */); /* subtable */
+    if (sh) {
+        lua_createtable(L, 0, 2 /* nrec */); /* subtable */
 
-    lua_pushlstring(L, "size", sizeof("size")-1);
-    lua_pushnumber(L, cache->sh->size);
-    lua_rawset(L, -3);
+        lua_pushlstring(L, "size", sizeof("size")-1);
+        lua_pushnumber(L, sh_tmp.size);
+        lua_rawset(L, -3);
 
-    lua_setfield(L, -2, "sh");
+        lua_setfield(L, -2, "sh");
+    }
 
     /* cache entry */
     if (cache) {
         lua_createtable(L, 0, 8 /* nrec */); /* subtable */
 
         lua_pushlstring(L, "max_size", sizeof("max_size")-1);
-        lua_pushnumber(L, cache->max_size);
+        lua_pushnumber(L, cache_tmp.max_size);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "bsize", sizeof("bsize")-1);
-        lua_pushnumber(L, cache->bsize);
+        lua_pushnumber(L, cache_tmp.bsize);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "inactive", sizeof("inactive")-1);
-        lua_pushnumber(L, cache->inactive);
+        lua_pushnumber(L, cache_tmp.inactive);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "files", sizeof("files")-1);
-        lua_pushnumber(L, cache->files);
+        lua_pushnumber(L, cache_tmp.files);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "loader_files", sizeof("loader_files")-1);
-        lua_pushnumber(L, cache->loader_files);
+        lua_pushnumber(L, cache_tmp.loader_files);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "loader_sleep", sizeof("loader_sleep")-1);
-        lua_pushnumber(L, cache->loader_sleep);
+        lua_pushnumber(L, cache_tmp.loader_sleep);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "loader_threshold", sizeof("loader_threshold")-1);
-        lua_pushnumber(L, cache->inactive);
+        lua_pushnumber(L, cache_tmp.inactive);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "aggressive_purge", sizeof("aggressive_purge")-1);
-        lua_pushnumber(L, cache->aggressive_purge);
+        lua_pushnumber(L, cache_tmp.aggressive_purge);
         lua_rawset(L, -3);
 
         lua_setfield(L, -2, "cache");
@@ -197,53 +205,51 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
         lua_createtable(L, 0, 11 /* nrec */); /* subtable */
 
         lua_pushlstring(L, "count", sizeof("count")-1);
-        lua_pushnumber(L, fcn->count);
+        lua_pushnumber(L, fcn_tmp.count);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "uses", sizeof("uses")-1);
-        lua_pushnumber(L, fcn->uses);
+        lua_pushnumber(L, fcn_tmp.uses);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "valid_msec", sizeof("valid_msec")-1);
-        lua_pushnumber(L, fcn->valid_msec);
+        lua_pushnumber(L, fcn_tmp.valid_msec);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "error", sizeof("error")-1);
-        lua_pushnumber(L, fcn->error);
+        lua_pushnumber(L, fcn_tmp.error);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "exists", sizeof("exists")-1);
-        lua_pushnumber(L, fcn->exists);
+        lua_pushnumber(L, fcn_tmp.exists);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "updating", sizeof("updating")-1);
-        lua_pushnumber(L, fcn->updating);
+        lua_pushnumber(L, fcn_tmp.updating);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "deleting", sizeof("deleting")-1);
-        lua_pushnumber(L, fcn->deleting);
+        lua_pushnumber(L, fcn_tmp.deleting);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "exists", sizeof("exists")-1);
-        lua_pushnumber(L, fcn->exists);
+        lua_pushnumber(L, fcn_tmp.exists);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "expire", sizeof("expire")-1);
-        lua_pushnumber(L, fcn->expire);
+        lua_pushnumber(L, fcn_tmp.expire);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "valid_sec", sizeof("valid_sec")-1);
-        lua_pushnumber(L, fcn->valid_sec);
+        lua_pushnumber(L, fcn_tmp.valid_sec);
         lua_rawset(L, -3);
 
         lua_pushlstring(L, "fs_size", sizeof("fs_size")-1);
-        lua_pushnumber(L, fcn->fs_size);
+        lua_pushnumber(L, fcn_tmp.fs_size);
         lua_rawset(L, -3);
 
         lua_setfield(L, -2, "fcn");
     }
-
-    ngx_shmtx_unlock(&cache->shpool->mutex);
 
     return 1;
 }
@@ -251,10 +257,20 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
 static int
 ngx_http_lua_ngx_set_cache_data(lua_State *L) {
     ngx_http_request_t              *r;
-    ngx_http_cache_t                *c;
-    ngx_http_file_cache_t           *cache;
-    ngx_http_file_cache_node_t      *fcn;
+    ngx_http_cache_t                *c, c_tmp;
+    ngx_http_file_cache_node_t      *fcn, fcn_tmp;
     int                              n; /* top of stack when we start. */
+    struct {
+        uint                         valid_sec:1;
+        uint                         last_modified:1;
+        uint                         date:1;
+        uint                         min_uses:1;
+        uint                         valid_msec:1;
+        uint                         fcn_uses:1;
+        uint                         fcn_valid_msec:1;
+        uint                         fcn_expire:1;
+        uint                         fcn_valid_sec:1;
+    } isset;
 
     n = lua_gettop(L);
     if (n != 1) {
@@ -272,54 +288,71 @@ ngx_http_lua_ngx_set_cache_data(lua_State *L) {
 
     c = r->cache;
     if (!c) {
-        /* return noop */
+        lua_pushboolean(L, 0);
+        return 1;
     }
-    fcn = c->node;
-    cache = c->file_cache;
 
-    lua_getfield(L, n, "valid_sec");
-    switch(lua_type(L, -1)) {
-        case LUA_TNUMBER:
-        c->valid_sec = lua_tonumber(L, -1);
+    /* setup dummy copies of structs, to write into */
+    fcn = c->node;
+    memset(&c_tmp, 0, sizeof(c_tmp));
+    memset(&fcn_tmp, 0, sizeof(fcn_tmp));
+    memset(&isset, 0, sizeof(isset));
+
+    ASSIGN_NUMBER_OR_RET("valid_sec", c_tmp.valid_sec, isset.valid_sec);
+    ASSIGN_NUMBER_OR_RET("last_modified", c_tmp.last_modified,
+                         isset.last_modified);
+    ASSIGN_NUMBER_OR_RET("date", c_tmp.date, isset.date);
+    ASSIGN_NUMBER_OR_RET("min_uses", c_tmp.min_uses, isset.min_uses);
+    ASSIGN_NUMBER_OR_RET("valid_msec", c_tmp.valid_msec, isset.valid_msec);
+
+    /* pop all we pushed on stack */
+    lua_pop(L, lua_gettop(L)-n);
+
+    /* file_cache_node */
+    if (fcn && lua_type(L, n+1) == LUA_TTABLE) {
+        /* push the fcn subtable onto the stack */
+        lua_getfield(L, n, "fcn");
+        ASSIGN_NUMBER_OR_RET("uses", fcn_tmp.uses, isset.fcn_uses);
+        ASSIGN_NUMBER_OR_RET("valid_msec", fcn_tmp.valid_msec,
+                             isset.fcn_valid_msec);
+        ASSIGN_NUMBER_OR_RET("expire", fcn_tmp.expire, isset.fcn_expire);
+        ASSIGN_NUMBER_OR_RET("valid_sec", fcn_tmp.valid_sec,
+                             isset.fcn_valid_sec);
+
+        /* pop all the entries we pushed on the stack*/
+        lua_pop(L, lua_gettop(L)-n);
+    }
+
+    /* write out changes */
+    ngx_shmtx_lock(&c->file_cache->shpool->mutex);
+
+    if (isset.valid_sec) {
+        c->valid_sec = c_tmp.valid_sec;
         if (c->buf && c->buf->pos) {
             ngx_http_file_cache_header_t  *h;
 
             h = (ngx_http_file_cache_header_t *) c->buf->pos;
             h->valid_sec = c->valid_sec;
         }
-            break;
-        case LUA_TNIL:
-            break;
-        default:
-            return luaL_error(L, "Bad args option value");
+    }
+    ASSIGN_IF_SET(c->last_modified, c_tmp.last_modified, isset.last_modified);
+    ASSIGN_IF_SET(c->date, c_tmp.date, isset.date);
+    ASSIGN_IF_SET(c->min_uses, c_tmp.min_uses, isset.min_uses);
+    ASSIGN_IF_SET(c->valid_msec, c_tmp.valid_msec, isset.valid_msec);
+
+    if (fcn) {
+        ASSIGN_IF_SET(fcn->uses, fcn_tmp.uses, isset.fcn_uses);
+        ASSIGN_IF_SET(fcn->valid_msec, fcn_tmp.valid_msec,isset.fcn_valid_msec);
+        ASSIGN_IF_SET(fcn->expire, fcn_tmp.expire, isset.fcn_expire);
+        ASSIGN_IF_SET(fcn->valid_sec, fcn_tmp.valid_sec, isset.fcn_valid_sec);
     }
 
-    ASSIGN_NUMBER_OR_RET("last_modified", c->last_modified);
-    ASSIGN_NUMBER_OR_RET("date", c->date);
-    ASSIGN_NUMBER_OR_RET("min_uses", c->min_uses);
-    ASSIGN_NUMBER_OR_RET("valid_msec", c->valid_msec);
+    ngx_shmtx_unlock(&c->file_cache->shpool->mutex);
 
-    lua_pop(L, lua_gettop(L)-n);
-
-    /* push the fcn subtable onto the stack */
-    lua_getfield(L, n, "fcn");
-
-    /* critical, locked section */
-    ngx_shmtx_lock(&cache->shpool->mutex);
-    /* file_cache_node */
-    if (fcn && lua_type(L, n+1) == LUA_TTABLE) {
-        ASSIGN_NUMBER_OR_RET_UNLOCK("uses", fcn->uses);
-        ASSIGN_NUMBER_OR_RET_UNLOCK("valid_msec", fcn->valid_msec);
-        ASSIGN_NUMBER_OR_RET_UNLOCK("expire", fcn->expire);
-        ASSIGN_NUMBER_OR_RET_UNLOCK("valid_sec", fcn->valid_sec);
-        lua_pop(L, lua_gettop(L)-n);
-    }
-
-    ngx_shmtx_unlock(&cache->shpool->mutex);
-
-    /* pop all the entries we pushed */
-    lua_pop(L, lua_gettop(L)-n);
-
+    /* pop the parameter off */
+    lua_pop(L, 1);
+    /* push a true as a return */
+    lua_pushboolean(L, 1);
     return 1;
 }
 
