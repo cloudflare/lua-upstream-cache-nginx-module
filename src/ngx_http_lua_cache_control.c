@@ -84,9 +84,12 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
     }
 
     /* make copies of all structs, to avoid locking for too long */
-    fcn = c->node ? c->node : NULL;
-    cache = c->file_cache ? c->file_cache : NULL;
-    sh = cache && cache->sh ? cache->sh : NULL;
+    fcn = c->node;
+    cache = c->file_cache;
+    sh = cache ? cache->sh : NULL;
+    memset(&cache_tmp, 0, sizeof(cache_tmp));
+    memset(&fcn_tmp, 0, sizeof(fcn_tmp));
+    memset(&sh_tmp, 0, sizeof(sh_tmp));
 
     ngx_shmtx_lock(&c->file_cache->shpool->mutex);
 
