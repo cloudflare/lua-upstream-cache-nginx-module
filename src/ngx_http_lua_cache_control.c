@@ -196,10 +196,6 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
         lua_pushnumber(L, cache_tmp.inactive);
         lua_rawset(L, -3);
 
-        lua_pushlstring(L, "aggressive_purge", sizeof("aggressive_purge")-1);
-        lua_pushnumber(L, cache_tmp.aggressive_purge);
-        lua_rawset(L, -3);
-
         lua_setfield(L, -2, "cache");
     }
 
