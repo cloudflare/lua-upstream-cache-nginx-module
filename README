@@ -36,7 +36,7 @@ Synopsis
 
                if cache_status == "MISS" or cache_status == "EXPIRED" then
                    local cache_data = http_cache.get_metadata()
-                   local new_expire = cache_data["date"] + 5
+                   local new_expire = ngx.time() + 5
 
                    if cache_data and cache_data["valid_sec"] then
                        http_cache.set_metadata({ valid_sec = new_expire,
