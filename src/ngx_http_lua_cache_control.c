@@ -26,6 +26,7 @@
 static int ngx_http_lua_ngx_get_cache_data(lua_State *L);
 static int ngx_http_lua_ngx_set_cache_data(lua_State *L);
 static int ngx_http_lua_ngx_set_expires(lua_State *L);
+static int ngx_http_lua_ngx_set_uses(lua_State *L);
 static int ngx_http_lua_ngx_cache_purge(lua_State *L);
 
 int
@@ -50,6 +51,9 @@ ngx_http_lua_inject_cache_control_api(lua_State *L) {
     /* .cache.set_expires */
     lua_pushcfunction(L, ngx_http_lua_ngx_set_expires);
     lua_setfield(L, -2, "set_expires");
+
+    lua_pushcfunction(L, ngx_http_lua_ngx_set_uses);
+    lua_setfield(L, -2, "set_uses");
 
     return 1;
 }
@@ -433,6 +437,68 @@ ngx_http_lua_ngx_set_expires(lua_State *L) {
     /* push a true as a return */
     lua_pushboolean(L, 1);
     return 1;
+}
+
+static int
+ngx_http_lua_ngx_set_uses(lua_State *L) {
+    int n, uses;
+    ngx_http_request_t *r;
+    ngx_http_cache_t   *c;
+    ngx_http_file_cache_node_t *fcn, fcn_tmp;
+
+    n = lua_gettop(L);
+    if (n != 1) {
+        return luaL_error(L, "only one argument is expected, but got %d", n);
+    }
+
+    /* uses is a non negative number */
+    luaL_checktype(L, -1, LUA_TNUMBER);
+
+    r = ngx_http_lua_get_request(L);
+
+    if (lua_type(L, -1) != LUA_TNUMBER) {
+        return luaL_error(L, "the argument is not a number, but a %s",
+                          lua_typename(L, lua_type(L, -1)));
+    }
+
+    c = r->cache;
+
+    if (!c) {
+        lua_pushboolean(L, 0);
+        return 1;
+    }
+
+    /* we should maintain the original structure from nginx data definition */
+    memset(&fcn_tmp, 0, sizeof(fcn_tmp));
+
+    uses = lua_tonumber(L, -1);
+
+    if (uses < 0 || uses > 1023) {
+        return luaL_error(L, "expecting a number between 0 and 1023, included");
+    }
+
+    fcn_tmp.uses = uses;
+
+    fcn = c->node;
+
+    if (!fcn) {
+        lua_pushboolean(L, 0);
+        return 1;
+    }
+
+    /* write out changes */
+    ngx_shmtx_lock(&c->file_cache->shpool->mutex);
+
+    fcn->uses = fcn_tmp.uses;
+
+    ngx_shmtx_unlock(&c->file_cache->shpool->mutex);
+
+    /* pop the parameter off */
+    lua_pop(L, 1);
+    /* push a true as a return */
+    lua_pushboolean(L, 1);
+    return 1;
+
 }
 
 static int
