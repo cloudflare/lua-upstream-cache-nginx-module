@@ -7,7 +7,7 @@
 
 #define ASSIGN_NUMBER_OR_RET(field, target, flag)                              \
     do {                                                                       \
-        lua_getfield(L, n, field);                                             \
+        lua_getfield(L, idx, field);                                           \
         switch(lua_type(L, -1)) {                                              \
             case LUA_TNUMBER:                                                  \
                 target = lua_tonumber(L, -1);                                  \
@@ -258,7 +258,7 @@ ngx_http_lua_ngx_set_cache_data(lua_State *L) {
     ngx_http_request_t              *r;
     ngx_http_cache_t                *c, c_tmp;
     ngx_http_file_cache_node_t      *fcn, fcn_tmp;
-    int                              n; /* top of stack when we start. */
+    int                              idx, n; /* top of stack when we start. */
     struct {
         uint                         valid_sec:1;
         uint                         last_modified:1;
@@ -297,6 +297,8 @@ ngx_http_lua_ngx_set_cache_data(lua_State *L) {
     memset(&fcn_tmp, 0, sizeof(fcn_tmp));
     memset(&isset, 0, sizeof(isset));
 
+    idx = n;
+
     ASSIGN_NUMBER_OR_RET("valid_sec", c_tmp.valid_sec, isset.valid_sec);
     ASSIGN_NUMBER_OR_RET("last_modified", c_tmp.last_modified,
                          isset.last_modified);
@@ -308,17 +310,27 @@ ngx_http_lua_ngx_set_cache_data(lua_State *L) {
     lua_pop(L, lua_gettop(L)-n);
 
     /* file_cache_node */
-    if (fcn && lua_type(L, n+1) == LUA_TTABLE) {
-        /* push the fcn subtable onto the stack */
+    if (fcn) {
         lua_getfield(L, n, "fcn");
-        ASSIGN_NUMBER_OR_RET("uses", fcn_tmp.uses, isset.fcn_uses);
-        ASSIGN_NUMBER_OR_RET("valid_msec", fcn_tmp.valid_msec,
-                             isset.fcn_valid_msec);
-        ASSIGN_NUMBER_OR_RET("expire", fcn_tmp.expire, isset.fcn_expire);
-        ASSIGN_NUMBER_OR_RET("valid_sec", fcn_tmp.valid_sec,
-                             isset.fcn_valid_sec);
+        if (lua_type(L, -1) == LUA_TTABLE) {
 
-        /* pop all the entries we pushed on the stack*/
+            idx = -1;
+
+            /* push the fcn subtable onto the stack */
+            ASSIGN_NUMBER_OR_RET("uses", fcn_tmp.uses, isset.fcn_uses);
+            lua_pop(L, 1);
+
+            ASSIGN_NUMBER_OR_RET("valid_msec", fcn_tmp.valid_msec,
+                                 isset.fcn_valid_msec);
+
+            lua_pop(L, 1);
+            ASSIGN_NUMBER_OR_RET("expire", fcn_tmp.expire, isset.fcn_expire);
+
+            lua_pop(L, 1);
+            ASSIGN_NUMBER_OR_RET("valid_sec", fcn_tmp.valid_sec,
+                             isset.fcn_valid_sec);
+            lua_pop(L, 1);
+        }
         lua_pop(L, lua_gettop(L)-n);
     }
 
@@ -418,3 +430,4 @@ ngx_http_lua_ngx_cache_purge(lua_State *L) {
     return 1;
 }
 
+/* vim: set expandtab ts=4 sw=4 */
