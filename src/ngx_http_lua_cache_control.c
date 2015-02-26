@@ -25,6 +25,7 @@
 
 static int ngx_http_lua_ngx_get_cache_data(lua_State *L);
 static int ngx_http_lua_ngx_set_cache_data(lua_State *L);
+static int ngx_http_lua_ngx_set_expires(lua_State *L);
 static int ngx_http_lua_ngx_cache_purge(lua_State *L);
 
 int
@@ -45,6 +46,10 @@ ngx_http_lua_inject_cache_control_api(lua_State *L) {
     lua_setfield(L, -2, "set_metadata");
 
     //lua_setfield(L, -2, "cache");
+
+    /* .cache.set_expires */
+    lua_pushcfunction(L, ngx_http_lua_ngx_set_expires);
+    lua_setfield(L, -2, "set_expires");
 
     return 1;
 }
@@ -368,6 +373,69 @@ ngx_http_lua_ngx_set_cache_data(lua_State *L) {
 }
 
 static int
+ngx_http_lua_ngx_set_expires(lua_State *L) {
+    int n;
+    ngx_http_request_t    *r;
+    ngx_http_cache_t      *c, c_tmp;
+
+    n = lua_gettop(L);
+    if (n != 1) {
+        return luaL_error(L, "only one argument is expected, but got %d", n);
+    }
+
+    /* expires is given in seconds */
+    luaL_checktype(L, -1, LUA_TNUMBER);
+
+    r = ngx_http_lua_get_request(L);
+
+    if (lua_type(L, -1) != LUA_TNUMBER) {
+        return luaL_error(L, "the argument is not a number, but a %s",
+                          lua_typename(L, lua_type(L, -1)));
+    }
+
+    c = r->cache;
+
+    if (!c) {
+        lua_pushboolean(L, 0);
+        return 1;
+    }
+
+    /* to mantain the module agnostic to the nginx data definitions we
+       use a copy of the internal structure of the cache */
+    memset(&c_tmp, 0, sizeof(c_tmp));
+
+    c_tmp.valid_sec = lua_tonumber(L, -1);
+
+    if (c_tmp.valid_sec < 0) {
+        return luaL_error(L, "expecting a positive number");
+    }
+
+    /* write out changes */
+    ngx_shmtx_lock(&c->file_cache->shpool->mutex);
+
+    c->valid_sec = c_tmp.valid_sec;
+
+    /* zero the msec value */
+    c->valid_msec = 0;
+
+    if (c->buf && c->buf->pos) {
+        ngx_http_file_cache_header_t *h;
+
+        h = (ngx_http_file_cache_header_t *) c->buf->pos;
+        h->valid_sec = c->valid_sec;
+        h->valid_msec = 0;
+    }
+
+    ngx_shmtx_unlock(&c->file_cache->shpool->mutex);
+
+    /* pop the parameter off */
+    lua_pop(L, 1);
+    /* push a true as a return */
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+static int
 ngx_http_lua_ngx_cache_purge(lua_State *L) {
     int                          n;
     ngx_http_request_t          *r;
@@ -429,5 +497,3 @@ ngx_http_lua_ngx_cache_purge(lua_State *L) {
     lua_pushboolean (L, 1);
     return 1;
 }
-
-/* vim: set expandtab ts=4 sw=4 */
