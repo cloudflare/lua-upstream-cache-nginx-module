@@ -126,6 +126,8 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
     lua_pushlstring(L, (char*)p, 2*NGX_HTTP_CACHE_KEY_LEN);
     lua_rawset(L, -3);
 
+    ngx_pfree(r->pool, p);
+
     lua_pushlstring(L, "crc32", sizeof("crc32")-1);
     lua_pushnumber(L, c->crc32);
     lua_rawset(L, -3);
