@@ -64,6 +64,8 @@ Synopsis
 API
 ===
 
+get_metadata
+------------
 **get_metadata()**: returns a table with all cache metadata.
 
 _resource specific fields_
@@ -93,7 +95,9 @@ _cache data, under "fcn"_
 * **loader_threshold**:
 * **aggressive_purge**: Flag for whether cache manager will use aggressive purge policy
 
-**set_metadat(tbl)**: sets cache metadata from a table similar to the one returned by get_metadata.
+set_metadata
+------------
+**set_metadata(tbl)**: sets cache metadata from a table similar to the one returned by get_metadata.
 
 _resource specific fields_
 
@@ -110,6 +114,10 @@ _cache data, under "fcn"_
 * **expire**
 * **valid_sec**
 
+set_uses
+--------
 **set_uses(number)**: force the number of uses for the cache reference
 
+set_expires
+-----------
 **set_expires(timestamp)**: for the time to expires
