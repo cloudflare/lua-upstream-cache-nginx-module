@@ -1,7 +1,7 @@
 lua-upstream-cache
 ==================
 
-**http_cache** - Expose & modify the internal nginx cache metadata.
+**http_cache **- Expose & modify the internal nginx cache metadata.
 
 _This module is not distributed with nginx source or in the lua-nginx-module._
 
@@ -26,40 +26,40 @@ and set values from nginx's internal cache metadata.
 Synopsis
 ========
 ```
-    # set search paths for pure Lua external libraries (';;' is the default path):
-    lua_package_path '/foo/bar/?.lua;/blah/?.lua;;';
+        # set search paths for pure Lua external libraries (';;' is the default path):
+        lua_package_path '/foo/bar/?.lua;/blah/?.lua;;';
 
-    # set search paths for Lua external libraries written in C (can also use ';;'):
-    lua_package_cpath '/bar/baz/?.so;/blah/blah/?.so;;';
+        # set search paths for Lua external libraries written in C (can also use ';;'):
+        lua_package_cpath '/bar/baz/?.so;/blah/blah/?.so;;';
 
-    server {
-        listen       8000 default_server;
-        server_name  localhost;
+        server {
+            listen       8000 default_server;
+            server_name  localhost;
 
-    location / {
-        proxy_cache pcache;
-        proxy_pass http://127.0.0.1:8001/;
+        location / {
+            proxy_cache pcache;
+            proxy_pass http://127.0.0.1:8001/;
 
-        # Force entries in cache to only be cached for 5 seconds
-        # This is equivalent to:
-        # proxy_ignore_headers "Expires" "Cache-Control;
-        # proxy_cache_valid any 5s;
-        header_filter_by_lua '
-            local http_cache = require("http_cache")
-            local cache_status = (ngx.var.upstream_cache_status or "")
+            # Force entries in cache to only be cached for 5 seconds
+            # This is equivalent to:
+            # proxy_ignore_headers "Expires" "Cache-Control;
+            # proxy_cache_valid any 5s;
+            header_filter_by_lua '
+               local http_cache = require("http_cache")
+               local cache_status = (ngx.var.upstream_cache_status or "")
 
-            if cache_status == "MISS" or cache_status == "EXPIRED" then
-                local cache_data = http_cache.get_metadata()
-                local new_expire = ngx.time() + 5
+               if cache_status == "MISS" or cache_status == "EXPIRED" then
+                   local cache_data = http_cache.get_metadata()
+                   local new_expire = ngx.time() + 5
 
-                if cache_data and cache_data["valid_sec"] then
-                    http_cache.set_metadata({ valid_sec = new_expire,
-                                                fcn = { valid_sec = new_expire,
-                                                        expire = new_expire } })
-                end
-            end
-        ';
-    }
+                   if cache_data and cache_data["valid_sec"] then
+                       http_cache.set_metadata({ valid_sec = new_expire,
+                                                 fcn = { valid_sec = new_expire,
+                                                     expire = new_expire } })
+                   end
+               end
+            ';
+        }
 ```
 API
 ===
