@@ -1,17 +1,31 @@
-Name
-    http_cache - Expose & modify the internal nginx cache metadata.
+lua-upstream-cache
+==================
 
-    *This module is not distributed with the Nginx source or in the lua-nginx
-    module*
-    Installation is similar to other nginx modules.
+**http_cache **- Expose & modify the internal nginx cache metadata.
+
+_This module is not distributed with nginx source or in the lua-nginx-module._
+
+[![Build Status](https://travis-ci.org/sapo/lua-upstream-cache-nginx-module.svg?branch=master)](https://travis-ci.org/sapo/lua-upstream-cache-nginx-module)
 
 Status
-    This module is under development and is used in production.
+======
+
+This module is under development and is used in production.
 
 Version
-    This document describes http_cache v0.1.1
+=======
+
+This document describes http_cache v0.1.1
+
+Description
+===========
+
+This module extends the lua-nginx Lua module. It adds the ability to read
+and set values from nginx's internal cache metadata.
 
 Synopsis
+========
+```
         # set search paths for pure Lua external libraries (';;' is the default path):
         lua_package_path '/foo/bar/?.lua;/blah/?.lua;;';
 
@@ -46,13 +60,12 @@ Synopsis
                end
             ';
         }
-
-Description
-    This module extends the lua-nginx Lua module. It adds the ability to read
-    and set values from nginx's internal cache metadata.
-
+```
 API
-    get_metadata() - returns a table with all cache metadata.
+===
+
+get_metadata() - returns a table with all cache metadata.
+
     The fields are:
     Resource specific fields
         key: Hexadecimal cache key for this resource
@@ -80,10 +93,13 @@ API
         aggressive_purge: Flag for whether cache manager will use aggressive
             purge policy
 
-    set_metadat(tbl) - sets cache metadata from a table similar to the one 
+set_metadat(tbl) - sets cache metadata from a table similar to the one
     returned by get_metadata. Fields that will be written are:
     Resource specific fields
     valid_sec, last_modified, date, min_uses, valid_msec
 
     Cache Data, under "fcn"
     uses, valid_msec, expire, valid_sec
+
+set_uses(number) - force the number of uses for the cache reference
+set_expires(timestamp) - for the time to expires
