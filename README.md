@@ -68,41 +68,47 @@ API
 
 _resource specific fields_
 
-	**key**: Hexadecimal cache key for this resource
-        **crc32**: Numeric crc32 calculated by nginx to check cache collisions
-        **valid_sec**: Absolute time, in seconds since Epoch, when this entry expires.
-        **last_modified**: Absolute time of last-modified header in seconds, if present.
-        **date**: Absolute time of date header in seconds, if present.
-	**length**: Length of contents
-	**fs_size**: Size of resource, in disk blocks.
-        	NOTE: This can be converted to bytes by multiplying by bsize below.
-	**min_uses**: Minimum number of uses required to cache this resource.
-        **valid_msec**: millisecond component of valid_secs (?)
+* **key**: Hexadecimal cache key for this resource
+* **crc32**: Numeric crc32 calculated by nginx to check cache collisions
+* **valid_sec**: Absolute time, in seconds since Epoch, when this entry expires.
+* **last_modified**: Absolute time of last-modified header in seconds, if present.
+* **date**: Absolute time of date header in seconds, if present.
+* **length**: Length of contents
+* **fs_size**: Size of resource, in disk blocks. (NOTE: This can be converted to bytes by multiplying by bsize below.)
+* **min_uses**: Minimum number of uses required to cache this resource.
+* **valid_msec**: millisecond component of valid_secs (?)
 
 _shared cache information, under "sh"_
 
-        **size**
+* **size**
         
 _cache data, under "fcn"_
 
-        **max_size**: maximum allowable cache size in 512B blocks
-        **bsize**: size of disk block in bytes.
-        **inactive**: inactive value for cache.
-        **files**: currently open files used by loader
-        **loader_files**: maximum number of files for the loader to open at once
-        **loader_sleep**: time between file opens
-        **loader_threshold**:
-        **aggressive_purge**: Flag for whether cache manager will use aggressive purge policy
+* **max_size**: maximum allowable cache size in 512B blocks
+* **bsize**: size of disk block in bytes.
+* **inactive**: inactive value for cache.
+* **files**: currently open files used by loader
+* **loader_files**: maximum number of files for the loader to open at once
+* **loader_sleep**: time between file opens
+* **loader_threshold**:
+* **aggressive_purge**: Flag for whether cache manager will use aggressive purge policy
 
 **set_metadat(tbl)**: sets cache metadata from a table similar to the one returned by get_metadata.
 
 _resource specific fields_
 
-    **valid_sec, last_modified, date, min_uses, valid_msec**
+* **valid_sec**
+* **last_modified**
+* **date**
+* **min_uses**
+* **valid_msec**
     
 _cache data, under "fcn"_
 
-    **uses, valid_msec, expire, valid_sec**
+* **uses**
+* **valid_msec**
+* **expire**
+* **valid_sec**
 
 **set_uses(number)**: force the number of uses for the cache reference
 
