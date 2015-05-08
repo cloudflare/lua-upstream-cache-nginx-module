@@ -126,6 +126,18 @@ ngx_http_lua_ngx_get_cache_data(lua_State *L) {
     lua_pushlstring(L, (char*)p, 2*NGX_HTTP_CACHE_KEY_LEN);
     lua_rawset(L, -3);
 
+# if defined(nginx_version) && (nginx_version >= 1008000)
+    ngx_hex_dump(p, c->main, NGX_HTTP_CACHE_KEY_LEN);
+    lua_pushlstring(L, "main", sizeof("main")-1);
+    lua_pushlstring(L, (char*)p, 2*NGX_HTTP_CACHE_KEY_LEN);
+    lua_rawset(L, -3);
+
+    ngx_hex_dump(p, c->variant, NGX_HTTP_CACHE_KEY_LEN);
+    lua_pushlstring(L, "variant", sizeof("variant")-1);
+    lua_pushlstring(L, (char *)p, 2*NGX_HTTP_CACHE_KEY_LEN);
+    lua_rawset(L, -3);
+# endif
+
     ngx_pfree(r->pool, p);
 
     lua_pushlstring(L, "crc32", sizeof("crc32")-1);
