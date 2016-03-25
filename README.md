@@ -5,7 +5,7 @@ lua-upstream-cache
 
 _This module is not distributed with nginx source or in the lua-nginx-module._
 
-[![Build Status](https://travis-ci.org/sapo/lua-upstream-cache-nginx-module.svg?branch=master)](https://travis-ci.org/sapo/lua-upstream-cache-nginx-module)
+<!--[![Build Status](https://travis-ci.org/alticelabs/lua-upstream-cache-nginx-module.svg?branch=master)](https://travis-ci.org/sapo/lua-upstream-cache-nginx-module)-->
 
 Status
 ======
@@ -83,7 +83,7 @@ _resource specific fields_
 _shared cache information, under "sh"_
 
 * **size**
-        
+
 _cache data, under "fcn"_
 
 * **max_size**: maximum allowable cache size in 512B blocks
@@ -106,7 +106,7 @@ _resource specific fields_
 * **date**
 * **min_uses**
 * **valid_msec**
-    
+
 _cache data, under "fcn"_
 
 * **uses**
