@@ -5,7 +5,8 @@ compiler:
 
 env:
   - VER_NGINX=1.6.3
-  - VER_NGINX=1.8.0
+  - VER_NGINX=1.8.1
+  - VER_NGINX=1.9.11
 
 before_install:
   - sudo apt-get update -qq
@@ -14,9 +15,9 @@ before_install:
 install:
   - mkdir ./vendor && cd ./vendor
   - wget "http://nginx.org/download/nginx-${VER_NGINX}.tar.gz" && tar -xf "nginx-${VER_NGINX}.tar.gz"
-  - wget "https://github.com/openresty/lua-nginx-module/archive/v0.9.16rc1.tar.gz" && tar -xf "v0.9.16rc1.tar.gz"
+  - wget "https://github.com/openresty/lua-nginx-module/archive/v0.10.0.tar.gz" && tar -xf "v0.10.0.tar.gz"
 
   - cd "nginx-${VER_NGINX}"
-  - ./configure --add-module=../.. --add-module=../lua-nginx-module-0.9.16rc1
+  - ./configure --add-module=../.. --add-module=../lua-nginx-module-0.10.0
 
 script: make

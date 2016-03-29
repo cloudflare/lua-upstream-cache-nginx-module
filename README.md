@@ -5,7 +5,7 @@ lua-upstream-cache
 
 _This module is not distributed with nginx source or in the lua-nginx-module._
 
-<!--[![Build Status](https://travis-ci.org/alticelabs/lua-upstream-cache-nginx-module.svg?branch=master)](https://travis-ci.org/sapo/lua-upstream-cache-nginx-module)-->
+[![Build Status](https://travis-ci.org/alticelabs/lua-upstream-cache-nginx-module.svg?branch=master)](https://travis-ci.org/alticelabs/lua-upstream-cache-nginx-module)
 
 Status
 ======
