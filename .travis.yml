@@ -3,17 +3,10 @@ compiler:
   - gcc
   - clang
 
-# Supported combinations:
 env:
-  matrix:
-    - VER_NGINX=1.8.1
-    - VER_NGINX=1.9.10
-    - VER_LUA_MODULE=0.10.0
-
-# Bleeding-edge:
-matrix:
-  include:
-    - env: VER_NGINX=1.9.12 VER_LUA_MODULE=0.10.2
+  - VER_NGINX=1.8.1 VER_LUA_MODULE=0.10.0
+  - VER_NGINX=1.9.10 VER_LUA_MODULE=0.10.0
+  - VER_NGINX=1.9.12 VER_LUA_MODULE=0.10.2
 
 sudo: false
 
