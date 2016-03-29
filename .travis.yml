@@ -4,9 +4,8 @@ compiler:
   - clang
 
 env:
-  - VER_NGINX=1.6.3
   - VER_NGINX=1.8.1
-  - VER_NGINX=1.9.11
+  - VER_NGINX=1.9.10
 
 before_install:
   - sudo apt-get update -qq
