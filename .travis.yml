@@ -1,0 +1,28 @@
+language: c
+compiler:
+  - gcc
+  - clang
+
+env:
+  - VER_NGINX=1.8.1 VER_LUA_MODULE=0.10.0
+  - VER_NGINX=1.9.10 VER_LUA_MODULE=0.10.0
+  - VER_NGINX=1.9.12 VER_LUA_MODULE=0.10.2
+
+sudo: false
+
+addons:
+  apt:
+    packages:
+      - lua5.1
+      - liblua5.1-0
+      - liblua5.1-0-dev
+
+install:
+  - mkdir ./vendor && cd ./vendor
+  - wget "http://nginx.org/download/nginx-${VER_NGINX}.tar.gz" && tar -xf "nginx-${VER_NGINX}.tar.gz"
+  - wget "https://github.com/openresty/lua-nginx-module/archive/v${VER_LUA_MODULE}.tar.gz" && tar -xf "v${VER_LUA_MODULE}.tar.gz"
+
+  - cd nginx-${VER_NGINX}
+  - ./configure --add-module=../.. --add-module=../lua-nginx-module-${VER_LUA_MODULE}
+
+script: make
